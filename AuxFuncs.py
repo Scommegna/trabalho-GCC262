@@ -1,5 +1,8 @@
 from GraphModel import Graph
 
+from collections import deque
+
+# Read input data and creates graph
 def create_graph_from_input():
     graph = Graph()
 
@@ -19,3 +22,62 @@ def create_graph_from_input():
 
             origin, destiny, cost, demand, connection_type = line.split()
             graph.add_connection(int(origin), int(destiny), int(cost), int(demand), connection_type.upper())
+
+    elif type_of_input == "matrix":
+        print("Type the data matrix")
+        print("Type the data in the following format: cost, demand, type or 0 if it does not has connection.")
+        print("Example: 0 5,7,E 20,5,A 0")
+        print("Type 'END' to finish the reading process")
+
+        matrix = []
+
+        while True:
+            line = input().strip()
+
+            if line.upper() == "END":
+                break
+
+            matrix.append(line.split())
+
+            n = len(matrix)
+            for i in range(n):
+                for j in range(len(matrix[i])):
+                    value = matrix[i][j]
+
+                    if value != "0":
+                        data = value.split(",")
+                        cost = int(data[0])
+                        demand = int(data[1])
+                        connection_type = data[2].upper()
+
+                        graph.add_connection(i, j, cost, demand, connection_type)
+    else:
+        print("Invalid input.")
+        return None
+
+    return graph
+
+# BFS function to get connected components in a graph
+def bfs_for_connected_components(start_node, graph_nodes, visited_set):
+    component_list = []
+    queue = deque([start_node])
+    visited_set.add(start_node)
+
+    while queue:
+        current_node = queue.popleft()
+        component_list.append(current_node)
+
+        for neighbor in graph_nodes[current_node].connections:
+            neighbor_id = neighbor["destiny"]
+
+            if neighbor_id not in visited_set:
+                visited_set.add(neighbor_id)
+                queue.append(neighbor_id)
+
+        for node_id, node in graph_nodes.items():
+            for neighbor in node.connections:
+                if neighbor["destiny"] == current_node and neighbor["connection_type"] == "E" and node_id not in visited_set:
+                    visited_set.add(node_id)
+                    queue.append(node_id)
+
+    return component_list

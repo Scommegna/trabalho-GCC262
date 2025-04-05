@@ -1,4 +1,10 @@
+"""
+Main function to start the application
 
+Author: Lucas Scommegna
+"""
 
-graph = {}
+from AuxFuncs import create_graph_from_input
+
+graph = create_graph_from_input()
 
