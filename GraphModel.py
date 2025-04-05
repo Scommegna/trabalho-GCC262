@@ -4,10 +4,13 @@ Graph Model:
     adj_list: DictionaryOfNodes
 }
 """
+from collections import defaultdict
 
 from NodeModel import Node
 
-from AuxFuncs import bfs_for_connected_components
+from AuxFuncs import bfs_for_connected_components, floyd_warshall, reconstruct_path
+
+import math
 
 class Graph:
     def __init__(self):
@@ -116,14 +119,88 @@ class Graph:
 
         return components_list
 
-    # def get_vertex_min_degree(self):
-    #     min_degree = float('inf')
-    #
-    #     for node_id, node in self.adj_list.items():
-    #         deg = 0
-    #         deg += len(node.connections)
-    #
-    #         for
+    # Get min degree of graph
+    def get_vertex_min_degree(self):
+        min_degree = float('inf')
+
+        for node_id, node in self.adj_list.items():
+            deg = 0
+            deg += len(node.connections)
+
+            for other_node in self.adj_list.values():
+                for neighbor in other_node.connections:
+                    if neighbor["destiny"] == node_id and (neighbor["connection_type"] == "E" or neighbor["connection_type"] == "A"):
+                        deg += 1
+
+            min_degree = min(min_degree, deg)
+
+        if self.adj_list:
+            return  min_degree
+
+        return 0
+
+    # Get max degree of graph
+    def get_vertex_max_degree(self):
+        max_degree = 0
+
+        for node_id, node in self.adj_list.items():
+            deg = 0
+            deg += len(node.connections)
+
+            for other_node in self.adj_list.values():
+                for neighbor in other_node.connections:
+                    if neighbor["destiny"] == node_id and (
+                            neighbor["connection_type"] == "E" or neighbor["connection_type"] == "A"):
+                        deg += 1
+
+            max_degree = max(max_degree, deg)
+
+        return max_degree
+
+    # Betweenness Centrality
+    def betweenness_centrality(self):
+        dist, next_node_dict = floyd_warshall(self)
+        centrality = defaultdict(int)
+        nodes = list(self.adj_list.keys())
+
+        for u in nodes:
+            for v in nodes:
+                if u != v:
+                    path = reconstruct_path(u, v, next_node_dict)
+
+                    for node in path[1:-1]:
+                        centrality[node] += 1
+
+        return dict(centrality)
+
+    # Average path length
+    def get_average_path_length(self):
+        dist, _ = floyd_warshall(self)
+        total = 0
+        count = 0
+
+        for u in self.adj_list:
+            for v in self.adj_list:
+                if u != v and dist[u][v] != math.inf:
+                    total += dist[u][v]
+                    count += 1
+
+        if count == 0:
+            return count
+
+        return total / count
+
+    # Get graph diameter
+    def get_diameter(self):
+        dist, _ = floyd_warshall(self)
+        diameter = 0
+
+        for u in self.adj_list:
+            for v in self.adj_list:
+                if u != v and dist[u][v] != math.inf:
+                    diameter = max(diameter, dist[u][v])
+
+        return diameter
 
     def __repr__(self):
         return str(self.adj_list)
