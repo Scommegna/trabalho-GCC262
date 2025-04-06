@@ -31,4 +31,37 @@ O problema visa encontrar um conjunto de viagens de veículos com custo mínimo,
 ---
 
 ### Instalação:
+1. Clone esse repositório na sua máquina:
 
+   ```bash
+    git clone git@github.com:Scommegna/trabalho-GCC262.git
+   
+2. Após, caso não tenha um Ambiente Virtual (venv) já criado, crie um pelos seguintes comandos na pasta do projeto (É necessário ter o Python3 e o pip instalados e atualizados na sua máquina):
+
+    ```bash
+    python -m venv venv
+
+3. Logo após, ative a venv pelo terminal:
+
+    Para Windows(CMD):
+   ```bash
+    venv\Scripts\activate
+   ```
+
+   Para Linux/MacOS
+   ```bash
+    source venv/bin/activate
+   ```
+   
+4. Após ativada a venv, instale as dependências com o seguinte comando:
+
+   ```bash
+    pip install -r requirements.txt
+   ```
+
+### Utilização:
+Após concluída a instalação, o programa pode ser utilizado ou pelo próprio editor de texto executando o arquivo main.py, ou então pelo Jupyter, que pode ser inicializado pelo seguinte comando:
+
+   ```bash
+    jupyter notebook
+   ```

@@ -12,7 +12,7 @@ graph = Graph()
 
 graph = create_graph_from_input(graph)
 
-# draw_graph(graph)
+draw_graph(graph)
 
 print("Total de vértices:", graph.get_total_of_vertexes())
 print("Total de arestas:", graph.get_total_of_edges())
