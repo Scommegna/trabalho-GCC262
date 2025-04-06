@@ -4,11 +4,11 @@ Graph Model:
     adj_list: DictionaryOfNodes
 }
 """
-from collections import defaultdict
+from collections import defaultdict, deque
 
 from NodeModel import Node
 
-from AuxFuncs import bfs_for_connected_components, floyd_warshall, reconstruct_path
+from AuxFuncs import floyd_warshall, reconstruct_path
 
 import math
 
@@ -39,12 +39,16 @@ class Graph:
 
     # Quantity of edges
     def get_total_of_edges(self):
+        seen_edges = set()
         quantity = 0
 
         for node in self.adj_list.values():
             for neighbor in node.connections:
-                if neighbor["connection_type"] == "E":
-                    quantity += 1
+                if neighbor.connection_type == "E":
+                    u, v = sorted([node.node_id, neighbor.destiny])
+                    if (u, v) not in seen_edges:
+                        seen_edges.add((u, v))
+                        quantity += 1
 
         return quantity
 
@@ -54,7 +58,7 @@ class Graph:
 
         for node in self.adj_list.values():
             for neighbor in node.connections:
-                if neighbor["connection_type"] == "A":
+                if neighbor.connection_type == "A":
                     quantity += 1
 
         return quantity
@@ -65,7 +69,7 @@ class Graph:
 
         for node_id, node in self.adj_list.items():
             for neighbor in node.connections:
-                if neighbor["demand"] > 0:
+                if neighbor.demand > 0:
                     required_vertexes.add(node_id)
                     break
 
@@ -73,22 +77,23 @@ class Graph:
 
     # Quantity of required edges
     def get_quantity_of_required_edges(self):
-        quantity = 0
+        seen_edges = set()
 
-        for node in self.adj_list.items():
+        for node in self.adj_list.values():
             for neighbor in node.connections:
-                if neighbor["demand"] > 0 and neighbor["connection_type"] == "E":
-                    quantity += 1
+                if neighbor.demand > 0 and neighbor.connection_type == "E":
+                    edge = frozenset({node.node_id, neighbor.destiny})
+                    seen_edges.add((edge))
 
-        return quantity
+        return len(seen_edges)
 
     # Quantity of required arcs
     def get_quantity_of_required_arcs(self):
         quantity = 0
 
-        for node in self.adj_list.items():
+        for node in self.adj_list.values():
             for neighbor in node.connections:
-                if neighbor["demand"] > 0 and neighbor["connection_type"] == "A":
+                if neighbor.demand > 0 and neighbor.connection_type == "A":
                     quantity += 1
 
         return quantity
@@ -124,13 +129,20 @@ class Graph:
         min_degree = float('inf')
 
         for node_id, node in self.adj_list.items():
+            deg_set = set()
             deg = 0
-            deg += len(node.connections)
+
+            for neighbor in node.connections:
+                if (neighbor.destiny, neighbor.connection_type) not in deg_set:
+                    deg += 1
+                    deg_set.add((neighbor.destiny, neighbor.connection_type))
 
             for other_node in self.adj_list.values():
                 for neighbor in other_node.connections:
-                    if neighbor["destiny"] == node_id and (neighbor["connection_type"] == "E" or neighbor["connection_type"] == "A"):
-                        deg += 1
+                    if neighbor.destiny == node_id:
+                        if (other_node.node_id, neighbor.connection_type) not in deg_set:
+                            deg += 1
+                            deg_set.add((other_node.node_id, neighbor.connection_type))
 
             min_degree = min(min_degree, deg)
 
@@ -144,14 +156,20 @@ class Graph:
         max_degree = 0
 
         for node_id, node in self.adj_list.items():
+            deg_set = set()
             deg = 0
-            deg += len(node.connections)
+
+            for neighbor in node.connections:
+                if (neighbor.destiny, neighbor.connection_type) not in deg_set:
+                    deg += 1
+                    deg_set.add((neighbor.destiny, neighbor.connection_type))
 
             for other_node in self.adj_list.values():
                 for neighbor in other_node.connections:
-                    if neighbor["destiny"] == node_id and (
-                            neighbor["connection_type"] == "E" or neighbor["connection_type"] == "A"):
-                        deg += 1
+                    if neighbor.destiny == node_id:
+                        if (other_node.node_id, neighbor.connection_type) not in deg_set:
+                            deg += 1
+                            deg_set.add((other_node.node_id, neighbor.connection_type))
 
             max_degree = max(max_degree, deg)
 
@@ -204,5 +222,31 @@ class Graph:
 
     def __repr__(self):
         return str(self.adj_list)
+
+
+# BFS function to get connected components in a graph
+def bfs_for_connected_components(start_node, graph_nodes, visited_set):
+    component_list = []
+    queue = deque([start_node])
+    visited_set.add(start_node)
+
+    while queue:
+        current_node = queue.popleft()
+        component_list.append(current_node)
+
+        for neighbor in graph_nodes[current_node].connections:
+            neighbor_id = neighbor.destiny
+
+            if neighbor.connection_type == "E":
+                if neighbor_id not in visited_set:
+                    visited_set.add(neighbor_id)
+                    queue.append(neighbor_id)
+
+            elif neighbor.connection_type == "A":
+                if neighbor_id not in visited_set:
+                    visited_set.add(neighbor_id)
+                    queue.append(neighbor_id)
+
+    return component_list
 
 

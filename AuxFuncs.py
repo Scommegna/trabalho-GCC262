@@ -1,13 +1,10 @@
-from GraphModel import Graph
-
-from collections import deque
-
 import math
 
-# Read input data and creates graph
-def create_graph_from_input():
-    graph = Graph()
+import networkx as nx
+import matplotlib.pyplot as plt
 
+# Read input data and creates graph
+def create_graph_from_input(graph):
     print("Type the type of input (list or matrix)")
     type_of_input = input().strip().lower()
 
@@ -41,48 +38,23 @@ def create_graph_from_input():
 
             matrix.append(line.split())
 
-            n = len(matrix)
-            for i in range(n):
-                for j in range(len(matrix[i])):
-                    value = matrix[i][j]
+        n = len(matrix)
+        for i in range(n):
+            for j in range(len(matrix[i])):
+                value = matrix[i][j]
 
-                    if value != "0":
-                        data = value.split(",")
-                        cost = int(data[0])
-                        demand = int(data[1])
-                        connection_type = data[2].upper()
+                if value != "0":
+                    data = value.split(",")
+                    cost = int(data[0])
+                    demand = int(data[1])
+                    connection_type = data[2].upper()
 
-                        graph.add_connection(i, j, cost, demand, connection_type)
+                    graph.add_connection(i, j, cost, demand, connection_type)
     else:
         print("Invalid input.")
         return None
 
     return graph
-
-# BFS function to get connected components in a graph
-def bfs_for_connected_components(start_node, graph_nodes, visited_set):
-    component_list = []
-    queue = deque([start_node])
-    visited_set.add(start_node)
-
-    while queue:
-        current_node = queue.popleft()
-        component_list.append(current_node)
-
-        for neighbor in graph_nodes[current_node].connections:
-            neighbor_id = neighbor["destiny"]
-
-            if neighbor_id not in visited_set:
-                visited_set.add(neighbor_id)
-                queue.append(neighbor_id)
-
-        for node_id, node in graph_nodes.items():
-            for neighbor in node.connections:
-                if neighbor["destiny"] == current_node and neighbor["connection_type"] == "E" and node_id not in visited_set:
-                    visited_set.add(node_id)
-                    queue.append(node_id)
-
-    return component_list
 
 # Floyd-Warshall algorithm
 def floyd_warshall(graph):
@@ -102,8 +74,8 @@ def floyd_warshall(graph):
 
     for u in graph.adj_list:
         for neighbor in graph.adj_list[u].connections:
-            v = neighbor["destiny"]
-            cost = neighbor["traversal_cost"]
+            v = neighbor.destiny
+            cost = neighbor.traversal_cost
             dist[u][v] = cost
             next_node_dict[u][v] = v
 
@@ -127,3 +99,25 @@ def reconstruct_path(u, v, next_node):
         path.append(u)
 
     return path
+
+# Plot Graph
+def draw_graph(graph):
+    G = nx.DiGraph()
+
+    for node in graph.adj_list.values():
+        for neighbor in node.connections:
+            G.add_edge(
+                node.node_id,
+                neighbor.destiny,
+                label=f'{neighbor.traversal_cost}/{neighbor.demand}',
+                color='blue' if neighbor.connection_type == "A" else 'black'
+            )
+
+    position = nx.spring_layout(G)
+    edge_labels = nx.get_edge_attributes(G, 'label')
+    edge_colors = [G[u][v]['color'] for u, v in G.edges]
+
+    nx.draw(G, position, with_labels=True, edge_color=edge_colors, node_size=700, node_color='lightgray')
+    nx.draw_networkx_edge_labels(G, position, edge_labels=edge_labels)
+    plt.title("Visualização do Grafo")
+    plt.show()
