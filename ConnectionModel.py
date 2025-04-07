@@ -9,7 +9,7 @@ Connection model:
 """
 
 class Connection:
-    def __init__(self, destiny, traversal_cost, demand, connection_type):
+    def __init__(self, destiny, traversal_cost, demand = 0, connection_type = 'E'):
         self.destiny = destiny
         self.traversal_cost = traversal_cost
         self.demand = demand
