@@ -1,7 +1,12 @@
 """
 Graph Model:
 {
-    adj_list: DictionaryOfNodes
+    adj_list: Dict[int, Node],
+    required_nodes: Set[int],
+    required_edges: Set[frozenset[int]],
+    required_arcs: List[Tuple[int, int]],
+    depot: Optional[int],
+    capacity: Optional[int],
 }
 """
 from collections import defaultdict, deque

@@ -6,6 +6,9 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
+pd.set_option('display.max_colwidth', None)
+pd.set_option('display.width', 1000)
+
 # Read .dat file to create graph
 def read_dat_to_graph(filename, graph):
     filepath = os.path.join("selected_instances", filename)
@@ -46,13 +49,11 @@ def read_dat_to_graph(filename, graph):
             continue
 
         if section == "REN":
-            # Example: N4	1	1
             parts = line.split()
             if parts[0].startswith("N"):
                 node_id = int(parts[0][1:])
                 graph.mark_required_node(node_id)
         elif section == "REE":
-            # Example: E1	2	3	18	1	19
             parts = line.split()
             if parts[0].startswith("E"):
                 u = int(parts[1])
@@ -61,7 +62,6 @@ def read_dat_to_graph(filename, graph):
                 demand = int(parts[4])
                 graph.add_connection(u, v, cost, demand, connection_type="E", required=True)
         elif section == "REA":
-            # Example: A1	1	2	13	1	14
             parts = line.split()
             if parts[0].startswith("A"):
                 u = int(parts[1])
