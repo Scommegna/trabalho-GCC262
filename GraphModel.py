@@ -31,18 +31,14 @@ class Graph:
         self.add_node(origin)
         self.add_node(destiny)
 
-        connection_data = (origin, destiny, connection_type)
-
         if connection_type == "E":
             self.adj_list[origin].add_connection(destiny, traversal_cost, demand, connection_type)
             self.adj_list[destiny].add_connection(origin, traversal_cost, demand, connection_type)
-
             if required and demand > 0:
                 self.required_edges.add(frozenset([origin, destiny]))
 
         elif connection_type == "A":
             self.adj_list[origin].add_connection(destiny, traversal_cost, demand, connection_type)
-
             if required and demand > 0:
                 self.required_arcs.append((origin, destiny))
 

@@ -191,3 +191,100 @@ def graph_stats_table(graph):
 
     df = pd.DataFrame.from_dict(stats, orient='index', columns=['Valor'])
     return df
+
+
+def generate_solution_file(filename_input, routes, graph, total_cost, clocks_execucao=0, clocks_solucao=0):
+    # Pasta de destino
+    output_dir = "solutions"
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Nome do arquivo de saída
+    nome_base = os.path.splitext(os.path.basename(filename_input))[0]
+    output_path = os.path.join(output_dir, f"sol-{nome_base}.dat")
+
+    # Criar mapeamento de serviços com seus IDs
+    service_map = {}
+    service_id = 1
+
+    # Nós requeridos
+    for node in sorted(graph.required_nodes):
+        service_map[('N', node)] = service_id
+        service_id += 1
+
+    # Arestas requeridas
+    for edge in sorted(graph.required_edges, key=lambda x: (min(x), max(x))):
+        u, v = sorted(edge)
+        service_map[('E', u, v)] = service_id
+        service_id += 1
+
+    # Arcos requeridos
+    for arc in sorted(graph.required_arcs):
+        u, v = arc
+        service_map[('A', u, v)] = service_id
+        service_id += 1
+
+    lines = []
+    lines.append(f"{total_cost}")
+    lines.append(f"{len(routes)}")
+    lines.append(f"{clocks_execucao}")
+    lines.append(f"{clocks_solucao}")
+
+    # Utilizado para evitar múltiplos contadores por serviço
+    visited_services = set()
+
+    for idx, route in enumerate(routes):
+        demand_total = 0
+        custo_total = 0
+        visitas = []
+
+        for i in range(1, len(route)):
+            u = int(route[i - 1])
+            v = int(route[i])
+            if i == 1:
+                visitas.append("(D 0,1,1)")
+
+            found = False
+
+            # Verifica se é um serviço de nó
+            if v in graph.required_nodes and (('N', v) not in visited_services):
+                visitas.append(f"(S {service_map[('N', v)]},{v},{v})")
+                visited_services.add(('N', v))
+                # Procurar a demanda/custo
+                for c in graph.adj_list[v].connections:
+                    if c.destiny == v:
+                        demand_total += c.demand
+                        custo_total += c.traversal_cost
+                        break
+
+            # Verifica se é um serviço de aresta
+            elif frozenset([u, v]) in graph.required_edges and (('E', min(u, v), max(u, v)) not in visited_services):
+                visitas.append(f"(S {service_map[('E', min(u, v), max(u, v))]},{u},{v})")
+                visited_services.add(('E', min(u, v), max(u, v)))
+                for c in graph.adj_list[u].connections:
+                    if c.destiny == v and c.connection_type == 'E':
+                        demand_total += c.demand
+                        custo_total += c.traversal_cost
+                        break
+
+            # Verifica se é um serviço de arco
+            elif (u, v) in graph.required_arcs and (('A', u, v) not in visited_services):
+                visitas.append(f"(S {service_map[('A', u, v)]},{u},{v})")
+                visited_services.add(('A', u, v))
+                for c in graph.adj_list[u].connections:
+                    if c.destiny == v and c.connection_type == 'A':
+                        demand_total += c.demand
+                        custo_total += c.traversal_cost
+                        break
+
+        visitas.append("(D 0,1,1)")
+        total_visitas = len(visitas)
+        route_line = f" 0 1 {idx + 1} {demand_total} {custo_total}  {total_visitas} " + " ".join(visitas)
+        lines.append(route_line)
+
+    # Escrever no arquivo
+    with open(output_path, 'w') as f:
+        f.write("\n".join(lines))
+
+    return output_path
+
+
