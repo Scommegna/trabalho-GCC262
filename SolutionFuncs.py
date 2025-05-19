@@ -1,12 +1,8 @@
-from collections import deque
 from typing import List
+from time import perf_counter
 
-# Supõe-se que as classes Graph, Node e Connection já estejam definidas conforme fornecido anteriormente.
-
-# Função para encontrar o caminho mais curto entre dois nós (Dijkstra)
 def dijkstra_shortest_path(graph, start, end):
     import heapq
-
     queue = [(0, start, [start])]
     visited = set()
 
@@ -24,7 +20,6 @@ def dijkstra_shortest_path(graph, start, end):
                 heapq.heappush(queue, (cost + conn.traversal_cost, conn.destiny, path + [conn.destiny]))
     return None
 
-# Função para calcular custo de um caminho
 def calculate_path_cost(graph, path: List[int]) -> int:
     cost = 0
     for i in range(len(path) - 1):
@@ -36,10 +31,11 @@ def calculate_path_cost(graph, path: List[int]) -> int:
                 break
     return cost
 
-# Algoritmo construtivo atualizado
 def constructive_algorithm_from_graph(graph):
+    start_total = perf_counter()
     depot = graph.depot
     capacity = graph.capacity
+
     required_services = {
         "N": {n: {"demand": 1, "served": False} for n in graph.required_nodes},
         "E": {
@@ -47,25 +43,25 @@ def constructive_algorithm_from_graph(graph):
                 "from": u, "to": v,
                 "demand": next(c.demand for c in graph.adj_list[u].connections if c.destiny == v and c.connection_type == "E"),
                 "served": False
-            }
-            for u, v in graph.required_edges
+            } for u, v in graph.required_edges
         },
         "A": {
             (u, v): {
                 "from": u, "to": v,
                 "demand": next(c.demand for c in graph.adj_list[u].connections if c.destiny == v and c.connection_type == "A"),
                 "served": False
-            }
-            for u, v in graph.required_arcs
+            } for u, v in graph.required_arcs
         }
     }
 
     routes = []
+    total_cost = 0
 
     while any(not s["served"] for svc in required_services.values() for s in svc.values()):
         route = [depot]
         remaining_capacity = capacity
         last_node = depot
+        service_added = False
 
         while True:
             best_service = None
@@ -86,18 +82,18 @@ def constructive_algorithm_from_graph(graph):
                             best_service = sid
                             best_path = path
                             best_type = s_type
+                            total_cost += best_cost
 
             if not best_service:
                 break
 
-            # Adiciona caminho até o serviço, evitando duplicata
-            if best_path:
-                for node in best_path[1:]:
-                    if route[-1] != node:
-                        route.append(node)
-                last_node = route[-1]
+            # Adiciona caminho até o serviço
+            for node in best_path[1:]:
+                if route[-1] != node:
+                    route.append(node)
+            last_node = route[-1]
+            service_added = True
 
-            # Executa o serviço
             if best_type == "N":
                 remaining_capacity -= 1
                 required_services["N"][best_service]["served"] = True
@@ -119,7 +115,7 @@ def constructive_algorithm_from_graph(graph):
                 required_services["A"][best_service]["served"] = True
                 last_node = v
 
-        # Fecha a rota voltando ao depósito
+        # Sempre retorna ao depósito se saiu dele
         if last_node != depot:
             back_path = dijkstra_shortest_path(graph, last_node, depot)
             if back_path:
@@ -127,9 +123,13 @@ def constructive_algorithm_from_graph(graph):
                     if route[-1] != node:
                         route.append(node)
 
-        if route == [depot]:
+        # Apenas salva se houve serviço
+        if service_added:
+            routes.append(route)
+        else:
             break
 
-        routes.append(route)
+    end_total = perf_counter()
+    clocks_used = int((end_total - start_total) * 1e6)
 
-    return routes
+    return routes, total_cost, clocks_used

@@ -2,6 +2,10 @@ import math
 
 import os
 
+import time
+
+from typing import List
+
 import pandas as pd
 
 import matplotlib.pyplot as plt
@@ -17,6 +21,11 @@ def read_dat_to_graph(filename, graph):
         lines = file.readlines()
 
     section = None
+    input_data = {
+        "ReN": [],
+        "ReE": [],
+        "ReA": []
+    }
 
     for line in lines:
         line = line.strip()
@@ -48,29 +57,57 @@ def read_dat_to_graph(filename, graph):
             section = None
             continue
 
+        # Parse required nodes
         if section == "REN":
             parts = line.split()
             if parts[0].startswith("N"):
                 node_id = int(parts[0][1:])
+                demand = int(parts[1])
+                service_cost = int(parts[2])
                 graph.mark_required_node(node_id)
+                input_data["ReN"].append({
+                    "ReN.": f"N{node_id}",
+                    "DEMAND": demand,
+                    "S. COST": service_cost
+                })
+
+        # Parse required edges
         elif section == "REE":
             parts = line.split()
             if parts[0].startswith("E"):
-                u = int(parts[1])
-                v = int(parts[2])
-                cost = int(parts[3])
+                from_n = int(parts[1])
+                to_n = int(parts[2])
+                t_cost = int(parts[3])
                 demand = int(parts[4])
-                graph.add_connection(u, v, cost, demand, connection_type="E", required=True)
+                s_cost = int(parts[5])
+                graph.add_connection(from_n, to_n, t_cost, demand, connection_type="E", required=True)
+                input_data["ReE"].append({
+                    "From N.": from_n,
+                    "To N.": to_n,
+                    "T. COST": t_cost,
+                    "DEMAND": demand,
+                    "S. COST": s_cost
+                })
+
+        # Parse required arcs
         elif section == "REA":
             parts = line.split()
             if parts[0].startswith("A"):
-                u = int(parts[1])
-                v = int(parts[2])
-                cost = int(parts[3])
+                from_n = int(parts[1])
+                to_n = int(parts[2])
+                t_cost = int(parts[3])
                 demand = int(parts[4])
-                graph.add_connection(u, v, cost, demand, connection_type="A", required=True)
+                s_cost = int(parts[5])
+                graph.add_connection(from_n, to_n, t_cost, demand, connection_type="A", required=True)
+                input_data["ReA"].append({
+                    "FROM N.": from_n,
+                    "TO N.": to_n,
+                    "T. COST": t_cost,
+                    "DEMAND": demand,
+                    "S. COST": s_cost
+                })
 
-    return graph
+    return graph, input_data
 
 # Floyd-Warshall algorithm
 def floyd_warshall(graph):
@@ -193,98 +230,89 @@ def graph_stats_table(graph):
     return df
 
 
-def generate_solution_file(filename_input, routes, graph, total_cost, clocks_execucao=0, clocks_solucao=0):
-    # Pasta de destino
-    output_dir = "solutions"
-    os.makedirs(output_dir, exist_ok=True)
 
-    # Nome do arquivo de saída
-    nome_base = os.path.splitext(os.path.basename(filename_input))[0]
-    output_path = os.path.join(output_dir, f"sol-{nome_base}.dat")
+def build_service_mapping(graph, input_data):
+    mapping = {}
 
-    # Criar mapeamento de serviços com seus IDs
-    service_map = {}
-    service_id = 1
+    # Mapeia nós requeridos
+    for i, item in enumerate(input_data['ReN'], start=1):
+        node = int(item['ReN.'][1:])  # N3 → 3
+        mapping[('N', node)] = i
 
-    # Nós requeridos
-    for node in sorted(graph.required_nodes):
-        service_map[('N', node)] = service_id
-        service_id += 1
+    # Mapeia arestas requeridas
+    for i, item in enumerate(input_data['ReE'], start=len(mapping)+1):
+        u = int(item['From N.'])
+        v = int(item['To N.'])
+        mapping[('E', frozenset({u, v}))] = i
 
-    # Arestas requeridas
-    for edge in sorted(graph.required_edges, key=lambda x: (min(x), max(x))):
-        u, v = sorted(edge)
-        service_map[('E', u, v)] = service_id
-        service_id += 1
+    # Mapeia arcos requeridos
+    for i, item in enumerate(input_data['ReA'], start=len(mapping)+1):
+        u = int(item['FROM N.'])
+        v = int(item['TO N.'])
+        mapping[('A', (u, v))] = i
 
-    # Arcos requeridos
-    for arc in sorted(graph.required_arcs):
-        u, v = arc
-        service_map[('A', u, v)] = service_id
-        service_id += 1
+    return mapping
 
-    lines = []
-    lines.append(f"{total_cost}")
-    lines.append(f"{len(routes)}")
-    lines.append(f"{clocks_execucao}")
-    lines.append(f"{clocks_solucao}")
 
-    # Utilizado para evitar múltiplos contadores por serviço
-    visited_services = set()
+def export_solution_to_dat(input_name, routes, service_mapping, total_cost, clocks_alg_ref, clocks_sol_ref, graph):
+    os.makedirs("solutions", exist_ok=True)
+    output_path = os.path.join("solutions", f"sol-{input_name}.dat")
 
-    for idx, route in enumerate(routes):
-        demand_total = 0
-        custo_total = 0
-        visitas = []
+    with open(output_path, "w") as f:
+        f.write(f"{total_cost}\n")
+        f.write(f"{len(routes)}\n")
+        f.write(f"{clocks_alg_ref}\n")
+        f.write(f"{clocks_sol_ref}\n")
 
-        for i in range(1, len(route)):
-            u = int(route[i - 1])
-            v = int(route[i])
-            if i == 1:
-                visitas.append("(D 0,1,1)")
+        for route_id, route in enumerate(routes, start=1):
+            demand = 0
+            cost = 0
+            visit_count = 0
+            depot = graph.depot
 
-            found = False
+            triplets = []
+            triplets.append("(D 0,1,1)")
+            visit_count += 1
 
-            # Verifica se é um serviço de nó
-            if v in graph.required_nodes and (('N', v) not in visited_services):
-                visitas.append(f"(S {service_map[('N', v)]},{v},{v})")
-                visited_services.add(('N', v))
-                # Procurar a demanda/custo
-                for c in graph.adj_list[v].connections:
-                    if c.destiny == v:
-                        demand_total += c.demand
-                        custo_total += c.traversal_cost
-                        break
+            for i in range(1, len(route)):
+                u = route[i - 1]
+                v = route[i]
+                cost += next((c.traversal_cost for c in graph.adj_list[u].connections if c.destiny == v), 0)
 
-            # Verifica se é um serviço de aresta
-            elif frozenset([u, v]) in graph.required_edges and (('E', min(u, v), max(u, v)) not in visited_services):
-                visitas.append(f"(S {service_map[('E', min(u, v), max(u, v))]},{u},{v})")
-                visited_services.add(('E', min(u, v), max(u, v)))
-                for c in graph.adj_list[u].connections:
-                    if c.destiny == v and c.connection_type == 'E':
-                        demand_total += c.demand
-                        custo_total += c.traversal_cost
-                        break
+                # Verifica se é nó requerido
+                if ('N', v) in service_mapping:
+                    sid = service_mapping[('N', v)]
+                    triplets.append(f"(S {sid},{v},{v})")
+                    demand += 1
+                    visit_count += 1
 
-            # Verifica se é um serviço de arco
-            elif (u, v) in graph.required_arcs and (('A', u, v) not in visited_services):
-                visitas.append(f"(S {service_map[('A', u, v)]},{u},{v})")
-                visited_services.add(('A', u, v))
-                for c in graph.adj_list[u].connections:
-                    if c.destiny == v and c.connection_type == 'A':
-                        demand_total += c.demand
-                        custo_total += c.traversal_cost
-                        break
+                # Verifica se é aresta
+                edge_key = frozenset({u, v})
+                if ('E', edge_key) in service_mapping:
+                    sid = service_mapping[('E', edge_key)]
+                    triplets.append(f"(S {sid},{u},{v})")
+                    demand += 1
+                    visit_count += 1
 
-        visitas.append("(D 0,1,1)")
-        total_visitas = len(visitas)
-        route_line = f" 0 1 {idx + 1} {demand_total} {custo_total}  {total_visitas} " + " ".join(visitas)
-        lines.append(route_line)
+                # Verifica se é arco
+                arc_key = (u, v)
+                if ('A', arc_key) in service_mapping:
+                    sid = service_mapping[('A', arc_key)]
+                    triplets.append(f"(S {sid},{u},{v})")
+                    demand += 1
+                    visit_count += 1
 
-    # Escrever no arquivo
-    with open(output_path, 'w') as f:
-        f.write("\n".join(lines))
+            triplets.append("(D 0,1,1)")
+            visit_count += 1
 
-    return output_path
+            # Escreve a linha da rota
+            f.write(f" 0 1 {route_id} {demand} {cost}  {visit_count} {' '.join(triplets)}\n")
+
+
+
+
+
+
+
 
 
