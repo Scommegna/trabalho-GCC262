@@ -2,9 +2,7 @@ import math
 
 import os
 
-import time
-
-from typing import List
+from GraphModel import Graph
 
 import pandas as pd
 
@@ -14,8 +12,10 @@ pd.set_option('display.max_colwidth', None)
 pd.set_option('display.width', 1000)
 
 # Read .dat file to create graph
-def read_dat_to_graph(filename, graph):
+def read_dat_to_graph(filename):
     filepath = os.path.join("selected_instances", filename)
+
+    graph = Graph()
 
     with open(filepath, 'r') as file:
         lines = file.readlines()
@@ -57,7 +57,6 @@ def read_dat_to_graph(filename, graph):
             section = None
             continue
 
-        # Parse required nodes
         if section == "REN":
             parts = line.split()
             if parts[0].startswith("N"):
@@ -109,49 +108,17 @@ def read_dat_to_graph(filename, graph):
 
     return graph, input_data
 
-# Floyd-Warshall algorithm
-def floyd_warshall(graph):
-    dist = {}
-    next_node_dict = {}
-    vertexes = list(graph.adj_list.keys())
+def read_all_dat_files_to_graphs():
+    results = []
 
-    for u in vertexes:
-        dist[u] = {}
-        next_node_dict[u] = {}
+    folder = "selected_instances"
+    for filepath in os.listdir(folder):
+        if filepath.endswith(".dat"):
+            graph, input_data = read_dat_to_graph(filepath)
+            results.append((graph, input_data, filepath))
 
-        for v in vertexes:
-            dist[u][v] = math.inf
-            next_node_dict[u][v] = None
+    return results
 
-        dist[u][u] = 0
-
-    for u in graph.adj_list:
-        for neighbor in graph.adj_list[u].connections:
-            v = neighbor.destiny
-            cost = neighbor.traversal_cost
-            dist[u][v] = cost
-            next_node_dict[u][v] = v
-
-    for k in vertexes:
-        for i in vertexes:
-            for j in vertexes:
-                if dist[i][k] + dist[k][j] < dist[i][j]:
-                    dist[i][j] = dist[i][k] + dist[k][j]
-                    next_node_dict[i][j] = next_node_dict[i][k]
-
-    return dist, next_node_dict
-
-def reconstruct_path(u, v, next_node):
-    if next_node[u][v] is None:
-        return []
-
-    path = [u]
-
-    while u != v:
-        u = next_node[u][v]
-        path.append(u)
-
-    return path
 
 # Plot Graph
 def draw_graph(graph):
@@ -231,21 +198,18 @@ def graph_stats_table(graph):
 
 
 
-def build_service_mapping(graph, input_data):
+def build_service_mapping(input_data):
     mapping = {}
 
-    # Mapeia nós requeridos
     for i, item in enumerate(input_data['ReN'], start=1):
-        node = int(item['ReN.'][1:])  # N3 → 3
+        node = int(item['ReN.'][1:])
         mapping[('N', node)] = i
 
-    # Mapeia arestas requeridas
     for i, item in enumerate(input_data['ReE'], start=len(mapping)+1):
         u = int(item['From N.'])
         v = int(item['To N.'])
         mapping[('E', frozenset({u, v}))] = i
 
-    # Mapeia arcos requeridos
     for i, item in enumerate(input_data['ReA'], start=len(mapping)+1):
         u = int(item['FROM N.'])
         v = int(item['TO N.'])
@@ -256,7 +220,7 @@ def build_service_mapping(graph, input_data):
 
 def export_solution_to_dat(input_name, routes, service_mapping, total_cost, clocks_alg_ref, clocks_sol_ref, graph):
     os.makedirs("solutions", exist_ok=True)
-    output_path = os.path.join("solutions", f"sol-{input_name}.dat")
+    output_path = os.path.join("solutions", f"sol-{input_name}")
 
     with open(output_path, "w") as f:
         f.write(f"{total_cost}\n")
@@ -268,7 +232,6 @@ def export_solution_to_dat(input_name, routes, service_mapping, total_cost, cloc
             demand = 0
             cost = 0
             visit_count = 0
-            depot = graph.depot
 
             triplets = []
             triplets.append("(D 0,1,1)")
@@ -279,14 +242,12 @@ def export_solution_to_dat(input_name, routes, service_mapping, total_cost, cloc
                 v = route[i]
                 cost += next((c.traversal_cost for c in graph.adj_list[u].connections if c.destiny == v), 0)
 
-                # Verifica se é nó requerido
                 if ('N', v) in service_mapping:
                     sid = service_mapping[('N', v)]
                     triplets.append(f"(S {sid},{v},{v})")
                     demand += 1
                     visit_count += 1
 
-                # Verifica se é aresta
                 edge_key = frozenset({u, v})
                 if ('E', edge_key) in service_mapping:
                     sid = service_mapping[('E', edge_key)]
@@ -294,7 +255,6 @@ def export_solution_to_dat(input_name, routes, service_mapping, total_cost, cloc
                     demand += 1
                     visit_count += 1
 
-                # Verifica se é arco
                 arc_key = (u, v)
                 if ('A', arc_key) in service_mapping:
                     sid = service_mapping[('A', arc_key)]
@@ -305,7 +265,6 @@ def export_solution_to_dat(input_name, routes, service_mapping, total_cost, cloc
             triplets.append("(D 0,1,1)")
             visit_count += 1
 
-            # Escreve a linha da rota
             f.write(f" 0 1 {route_id} {demand} {cost}  {visit_count} {' '.join(triplets)}\n")
 
 

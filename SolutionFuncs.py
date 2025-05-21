@@ -1,4 +1,3 @@
-from typing import List
 from time import perf_counter
 
 def dijkstra_shortest_path(graph, start, end):
@@ -20,7 +19,7 @@ def dijkstra_shortest_path(graph, start, end):
                 heapq.heappush(queue, (cost + conn.traversal_cost, conn.destiny, path + [conn.destiny]))
     return None
 
-def calculate_path_cost(graph, path: List[int]) -> int:
+def calculate_path_cost(graph, path):
     cost = 0
     for i in range(len(path) - 1):
         origin = path[i]
@@ -87,7 +86,6 @@ def constructive_algorithm_from_graph(graph):
             if not best_service:
                 break
 
-            # Adiciona caminho até o serviço
             for node in best_path[1:]:
                 if route[-1] != node:
                     route.append(node)
@@ -115,7 +113,6 @@ def constructive_algorithm_from_graph(graph):
                 required_services["A"][best_service]["served"] = True
                 last_node = v
 
-        # Sempre retorna ao depósito se saiu dele
         if last_node != depot:
             back_path = dijkstra_shortest_path(graph, last_node, depot)
             if back_path:
@@ -123,7 +120,6 @@ def constructive_algorithm_from_graph(graph):
                     if route[-1] != node:
                         route.append(node)
 
-        # Apenas salva se houve serviço
         if service_added:
             routes.append(route)
         else:

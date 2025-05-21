@@ -11,7 +11,6 @@ Graph Model:
 """
 from collections import defaultdict, deque
 from NodeModel import Node
-from AuxFuncs import floyd_warshall, reconstruct_path
 import math
 
 class Graph:
@@ -179,5 +178,48 @@ def bfs_for_connected_components(start_node, graph_nodes, visited_set):
 
     return component
 
+# Floyd-Warshall algorithm
+def floyd_warshall(graph):
+    dist = {}
+    next_node_dict = {}
+    vertexes = list(graph.adj_list.keys())
+
+    for u in vertexes:
+        dist[u] = {}
+        next_node_dict[u] = {}
+
+        for v in vertexes:
+            dist[u][v] = math.inf
+            next_node_dict[u][v] = None
+
+        dist[u][u] = 0
+
+    for u in graph.adj_list:
+        for neighbor in graph.adj_list[u].connections:
+            v = neighbor.destiny
+            cost = neighbor.traversal_cost
+            dist[u][v] = cost
+            next_node_dict[u][v] = v
+
+    for k in vertexes:
+        for i in vertexes:
+            for j in vertexes:
+                if dist[i][k] + dist[k][j] < dist[i][j]:
+                    dist[i][j] = dist[i][k] + dist[k][j]
+                    next_node_dict[i][j] = next_node_dict[i][k]
+
+    return dist, next_node_dict
+
+def reconstruct_path(u, v, next_node):
+    if next_node[u][v] is None:
+        return []
+
+    path = [u]
+
+    while u != v:
+        u = next_node[u][v]
+        path.append(u)
+
+    return path
 
 
