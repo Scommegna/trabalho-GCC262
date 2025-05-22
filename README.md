@@ -65,3 +65,19 @@ Após concluída a instalação, o programa pode ser utilizado ou pelo próprio 
    ```bash
     jupyter notebook
    ```
+
+### Segunda Etapa:
+
+Para esta etapa deve-se gerar soluções iniciais que atendam os seguintes critérios:
+
+- Desenvolver um algoritmo construtivo para o problema dado na fase 1.
+- A solução não deve ultrapassar a capacidade dos veículos em cada rota.
+- Caso uma rota passe mais de uma vez por vértice, ou uma aresta, ou um arco requerido, o valor da demanda do serviço e seu custo de serviço devem ser contados apenas uma vez.
+
+### Utilização
+Execute o programa pelo próprio arquivo main.py. Após iniciar a execução, será fornecido um input indicando se você deseja gerar a solução de uma instância específica do problema ou de todas.
+Para o caso de uma digite "one" e será fornecido um input para digitar o nome do arquivo a ser resolvido. Todos os arquivos possíveis estão na pasta `selected_instances`.
+
+Caso você digite "all" no primeiro input, serão geradas as soluções de todos os arquivos.
+
+As soluções serão geradas na pasta `solutions`.
