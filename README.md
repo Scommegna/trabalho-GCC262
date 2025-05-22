@@ -81,3 +81,5 @@ Para o caso de uma digite "one" e será fornecido um input para digitar o nome d
 Caso você digite "all" no primeiro input, serão geradas as soluções de todos os arquivos.
 
 As soluções serão geradas na pasta `solutions`.
+
+Foram retiradas as funções da primeira etapa do trabalho no arquivo `main.py` para trazer mais clareza ao ler o código.
